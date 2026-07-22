@@ -1,0 +1,2 @@
+-I/home/toni/stupid_projects/oshot/include/libs
+-I/home/toni/stupid_projects/oshot/src/plugins/
