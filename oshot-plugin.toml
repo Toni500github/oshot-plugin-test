@@ -1,7 +1,7 @@
 [repository]
 # The repository name.
-# It must contain only alpha-numeric characters and symbols such as '-' or '_'
-name = "tonis oshot test plugins"
+# It must contain only alpha-numeric characters and symbols such as '-' or '_' or '='
+name = "tonis-oshot-test_plugins"
 
 # The repository git clone / homepage url.
 url = "https://github.com/Toni500github/oshot-plugin-test"
