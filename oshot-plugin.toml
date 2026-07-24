@@ -1,7 +1,7 @@
 [repository]
 # The repository name.
 # It must contain only alpha-numeric characters and symbols such as '-' or '_' or '='
-name = "tonis-oshot-test_plugins"
+name = "tonis-plugin"
 
 # The repository git clone / homepage url.
 url = "https://github.com/Toni500github/oshot-plugin-test"
@@ -25,7 +25,7 @@ macos   = ["gtk+3"]
 # The plugin ID.
 # It must contain only alpha-numeric characters and symbols such as '-' or '_'
 # and at least one dot '.'
-id = "toni.test-plugin"
+id = "toni-test-plugin"
 
 # The plugin description.
 description = "Test plugin for oshot. Uppercase ocr output"
