@@ -1,0 +1,83 @@
+name: Build
+
+# Builds the plugin for every target. A v* tag also publishes the libraries,
+# with their checksums, as a GitHub release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The oshot commit whose plugin SDK (headers, ImGui version) the plugin is built against
+  OSHOT_REF: ac1f7ce9318e623a91c9e2a21f79db93b730edbc
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04: an older glibc, so the library loads on more distributions
+          - { target: linux-x86_64, os: ubuntu-22.04, ext: so }
+          - { target: linux-aarch64, os: ubuntu-22.04-arm, ext: so }
+          - { target: windows-x86_64, os: ubuntu-24.04, ext: dll, cross: x86_64-w64-mingw32 }
+          - { target: macos-aarch64, os: macos-15, ext: dylib, arch: arm64 }
+          - { target: macos-x86_64, os: macos-15, ext: dylib, arch: x86_64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install MinGW-w64
+        if: matrix.cross
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+
+      - name: Get oshot's plugin SDK
+        env:
+          DLLTOOL: ${{ matrix.cross && format('{0}-dlltool', matrix.cross) || '' }}
+        run: ./scripts/fetch_sdk.sh "$OSHOT_REF" sdk
+
+      - name: Build
+        run: |
+          args=()
+          if [ -n "${{ matrix.cross }}" ]; then
+            args+=(-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${{ matrix.cross }}-gcc)
+          fi
+          if [ -n "${{ matrix.arch }}" ]; then
+            # oshot's own minimum macOS
+            args+=(-DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0)
+          fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOSHOT_SDK="$PWD/sdk" "${args[@]}"
+          cmake --build build
+          mkdir -p dist
+          cp build/out/* "dist/oshot-plugin-test-${{ matrix.target }}.${{ matrix.ext }}"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
