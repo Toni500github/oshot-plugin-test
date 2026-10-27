@@ -11,7 +11,9 @@ It needs a `-plugins` build of oshot. The plugin API is still experimental.
 oshotpm install https://github.com/Toni500github/oshot-plugin-test
 ```
 
-or from oshot: Tools > Install Plugins..., with the same URL. Building it needs git, CMake and a C compiler (on
+or from oshot: Tools > Install Plugins..., with the same URL. It's also in the
+[plugin index](https://github.com/Toni500github/oshot-plugin-index), so oshot versions that read it can install it
+with `oshotpm install io.github.toni500github.plugin-test` or Tools > Browse Plugins. Building it needs git, CMake and a C compiler (on
 Windows, MinGW-w64, e.g. MSYS2's UCRT64). Prebuilt libraries for Linux, Windows and macOS are on the
 [releases](https://github.com/Toni500github/oshot-plugin-test/releases) page.
 
