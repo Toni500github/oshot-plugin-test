@@ -1,3 +1,5 @@
+# Read by oshotpm and oshot to install the plugin: see
+# https://github.com/Toni500github/oshot/blob/main/docs/plugins.md#the-manifest
 [repository]
 name = "oshot-plugin-test"
 url = "https://github.com/Toni500github/oshot-plugin-test"
@@ -6,7 +8,7 @@ url = "https://github.com/Toni500github/oshot-plugin-test"
 all = ["cmake", "a C compiler"]
 
 [uppercase]
-id = "io.github.toni500github.plugin-test"
+id = "io.github.toni500github.plugin-test" # the same as PLUGIN_ID in src/plugin.c
 description = "Test plugin for oshot: uppercases the extracted text"
 authors = ["Toni500github"]
 licenses = ["Unlicense"]

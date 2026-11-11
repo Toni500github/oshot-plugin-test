@@ -1,0 +1,126 @@
+name: Build
+
+# Builds the plugin for every target oshot ships for, and runs its unit tests
+# where the runner can. A v* tag also publishes the libraries as a GitHub
+# release, with their checksums and the plugin's entry for the oshot plugin
+# index (in the release and in the run's summary).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The oshot commit whose plugin SDK (headers, ImGui version) the plugin is built against
+  OSHOT_REF: 838dcbdfe147734a8f4076107fce39ef0f323724
+  # MinGW toolchain for both Windows targets, with the UCRT that oshot uses too
+  LLVM_MINGW: "20261020"
+  LLVM_MINGW_SHA256: 55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5e8ae335
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04: an older glibc, so the library loads on more distributions
+          - { target: linux-x86_64, os: ubuntu-22.04, ext: so, test: true }
+          - { target: linux-aarch64, os: ubuntu-22.04-arm, ext: so, test: true }
+          - { target: windows-x86_64, os: ubuntu-24.04, ext: dll, cross: x86_64-w64-mingw32 }
+          - { target: windows-aarch64, os: ubuntu-24.04, ext: dll, cross: aarch64-w64-mingw32 }
+          - { target: macos-aarch64, os: macos-15, ext: dylib, arch: arm64, test: true }
+          - { target: macos-x86_64, os: macos-15, ext: dylib, arch: x86_64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check that the plugin has its own ID
+        if: matrix.target == 'linux-x86_64' && github.repository != 'Toni500github/oshot-plugin-test'
+        run: |
+          if grep -n 'io\.github\.toni500github\.plugin-test' src/plugin.c oshot-plugin.toml; then
+            echo "::error::This is still the template's plugin ID: set PLUGIN_ID in src/plugin.c and the id in oshot-plugin.toml"
+            exit 1
+          fi
+
+      - name: Install llvm-mingw
+        if: matrix.cross
+        run: |
+          name="llvm-mingw-$LLVM_MINGW-ucrt-ubuntu-22.04-x86_64"
+          curl -fsSL -o "$RUNNER_TEMP/llvm-mingw.tar.xz" "https://github.com/mstorsjo/llvm-mingw/releases/download/$LLVM_MINGW/$name.tar.xz"
+          echo "$LLVM_MINGW_SHA256  $RUNNER_TEMP/llvm-mingw.tar.xz" | sha256sum -c -
+          tar -xf "$RUNNER_TEMP/llvm-mingw.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$name/bin" >> "$GITHUB_PATH"
+
+      - name: Get oshot's plugin SDK
+        env:
+          DLLTOOL: ${{ matrix.cross && format('{0}-dlltool', matrix.cross) || '' }}
+        run: ./scripts/fetch_sdk.sh "$OSHOT_REF" sdk
+
+      - name: Build
+        run: |
+          args=()
+          if [ -n "${{ matrix.cross }}" ]; then
+            args+=(-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${{ matrix.cross }}-clang)
+          fi
+          if [ -n "${{ matrix.arch }}" ]; then
+            # oshot's own minimum macOS
+            args+=(-DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0)
+          fi
+          if [ "${{ matrix.test }}" = true ]; then
+            args+=(-DBUILD_TESTING=ON)
+          fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOSHOT_SDK="$PWD/sdk" "${args[@]}"
+          cmake --build build
+          mkdir -p dist
+          cp build/out/* "dist/${{ github.event.repository.name }}-${{ matrix.target }}.${{ matrix.ext }}"
+
+      - name: Test
+        if: matrix.test
+        run: ctest --test-dir build --output-on-failure
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+
+      # plugins/<ID>.toml for https://github.com/Toni500github/oshot-plugin-index
+      - name: Plugin index entry
+        run: |
+          python3 scripts/index_entry.py --dist dist --repo "$GITHUB_REPOSITORY" --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" > index-entry.toml
+          cat index-entry.toml
+          {
+            echo "### Plugin index entry"
+            echo
+            echo '```toml'
+            cat index-entry.toml
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/*
+            index-entry.toml

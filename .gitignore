@@ -1,69 +1,19 @@
-# Prerequisites
-*.d
+# Build output
+build/
+build-*/
+dist/
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# oshot's plugin SDK, from scripts/fetch_sdk.sh
+sdk/
 
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
+# Libraries built by hand
 *.so
 *.dylib
 *.dll
-*.so.*
+*.o
+*.obj
 
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Build directories
-build/
-Build/
-build-*/
-
-# CMake generated files
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-install_manifest.txt
-compile_commands.json
-
-# Temporary files
-*.tmp
-*.log
-*.bak
-*.swp
-
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
+# Editors and tools
 .cache/
+compile_commands.json
+*.swp
