@@ -25,7 +25,10 @@ Press **Use this template** on GitHub, then in the new repository:
    [`src/plugin.c`](src/plugin.c) and in `id` in [`oshot-plugin.toml`](oshot-plugin.toml). CI fails until the
    template's ID is gone.
 2. Set `PLUGIN_NAME`, and in the manifest the `[repository]` name and URL, the plugin's table name, description,
-   authors and licenses. Replace [`LICENSE`](LICENSE) if you don't want the Unlicense.
+   authors and licenses. If the plugin uses the network, writes files outside its folder or runs programs, declare
+   that with a reason in a `[<plugin>.capabilities]` table (see
+   [the manifest](https://github.com/Toni500github/oshot/blob/main/docs/plugins.md#the-manifest)). Replace
+   [`LICENSE`](LICENSE) if you don't want the Unlicense.
 3. Write the plugin in `src/plugin.c` and its tests in [`tests/test_plugin.c`](tests/test_plugin.c).
 
 | File | What it is |
